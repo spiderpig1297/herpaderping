@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.30907.101
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Herpaderping", "Herpaderping\Herpaderping.vcxproj", "{9AD27B16-5786-4165-A461-F91532CECF48}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Payload", "Payload\Payload.vcxproj", "{FCD8B698-6CE6-49FD-8877-103D60D6FFE5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,14 @@ Global
 		{9AD27B16-5786-4165-A461-F91532CECF48}.Release|x64.Build.0 = Release|x64
 		{9AD27B16-5786-4165-A461-F91532CECF48}.Release|x86.ActiveCfg = Release|Win32
 		{9AD27B16-5786-4165-A461-F91532CECF48}.Release|x86.Build.0 = Release|Win32
+		{FCD8B698-6CE6-49FD-8877-103D60D6FFE5}.Debug|x64.ActiveCfg = Debug|x64
+		{FCD8B698-6CE6-49FD-8877-103D60D6FFE5}.Debug|x64.Build.0 = Debug|x64
+		{FCD8B698-6CE6-49FD-8877-103D60D6FFE5}.Debug|x86.ActiveCfg = Debug|Win32
+		{FCD8B698-6CE6-49FD-8877-103D60D6FFE5}.Debug|x86.Build.0 = Debug|Win32
+		{FCD8B698-6CE6-49FD-8877-103D60D6FFE5}.Release|x64.ActiveCfg = Release|x64
+		{FCD8B698-6CE6-49FD-8877-103D60D6FFE5}.Release|x64.Build.0 = Release|x64
+		{FCD8B698-6CE6-49FD-8877-103D60D6FFE5}.Release|x86.ActiveCfg = Release|Win32
+		{FCD8B698-6CE6-49FD-8877-103D60D6FFE5}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

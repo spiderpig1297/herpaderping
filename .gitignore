@@ -1,3 +1,19 @@
+x64\
+Debug\
+Release\
+*.vcxproj*
+*.vs\
+*.suo
+*.db*
+*.tlog
+*.pdb
+*.idb
+*.log
+*.exe*
+*.ipch
+*.ilk
+*.opendb
+
 # Prerequisites
 *.d
 

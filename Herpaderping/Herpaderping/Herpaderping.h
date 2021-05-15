@@ -3,7 +3,7 @@
 #include <vector>
 #include "NtdllFunctions.h"
 
-constexpr auto DEFAULT_WINDOWS_STATION = "WinSta0\\Default";
+constexpr auto DEFAULT_WINDOWS_STATION = L"WinSta0\\Default";
 
 class Herpaderping
 {
@@ -16,7 +16,7 @@ public:
 	Herpaderping(std::string path_to_source, 
 				 std::string path_to_target, 
 				 std::string path_to_cover,
-				 const char* windows_station_to_run_on=DEFAULT_WINDOWS_STATION);
+				 const wchar_t* windows_station_to_run_on=DEFAULT_WINDOWS_STATION);
 
 	/**
 	 * Runs the executable in path_to_source while "lying" that the content of the executable file
@@ -59,7 +59,7 @@ protected:
 	 */
 	void create_and_run_target_main_thread();
 
-	const char* windows_station_to_run_on;
+	const wchar_t* windows_station_to_run_on;
 	HANDLE section_handle;
 	HANDLE target_process;
 	HANDLE target_file;

@@ -4,8 +4,7 @@
 
 constexpr auto PATH_TO_SOURCE = "C:\\Users\\idano\\Workspace\\Projects\\herpaderping\\Herpaderping\\x64\\Debug\\Payload.exe";
 constexpr auto PATH_TO_TARGET = "C:\\Users\\idano\\Workspace\\Projects\\herpaderping\\Herpaderping\\x64\\Debug\\target.exe";
-//constexpr auto PATH_TO_COVER = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-constexpr auto PATH_TO_COVER = "C:\\Windows\\System32\\calc.exe";
+constexpr auto PATH_TO_COVER = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 
 int main()
 {	

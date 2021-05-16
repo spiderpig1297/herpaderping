@@ -59,15 +59,15 @@ protected:
 	 */
 	void create_and_run_target_main_thread();
 
-	const wchar_t* windows_station_to_run_on;
-	HANDLE section_handle;
-	HANDLE target_process;
-	HANDLE target_file;
-	HANDLE thread_handle;
-	std::unique_ptr<std::vector<char>> source_file_payload;
+	const wchar_t* m_windows_station_to_run_on;
+	HANDLE m_section_handle;
+	HANDLE m_target_process;
+	HANDLE m_target_file;
+	HANDLE m_thread_handle;
+	std::unique_ptr<std::vector<char>> m_source_file_payload;
 
-	std::unique_ptr<NtdllFunctions> ntdll_functions;
-	std::string path_to_source;
-	std::string path_to_target;
-	std::string path_to_cover;
+	std::unique_ptr<NtdllFunctions> m_ntdll_functions;
+	std::string m_path_to_source;
+	std::string m_path_to_target;
+	std::string m_path_to_cover;
 };

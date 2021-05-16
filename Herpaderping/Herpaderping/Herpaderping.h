@@ -2,6 +2,7 @@
 
 #include <vector>
 #include "NtdllFunctions.h"
+#include "HandleGuard.h"
 
 constexpr auto DEFAULT_WINDOWS_STATION = L"WinSta0\\Default";
 
@@ -60,10 +61,10 @@ protected:
 	void create_and_run_target_main_thread();
 
 	const wchar_t* m_windows_station_to_run_on;
-	HANDLE m_section_handle;
-	HANDLE m_target_process;
-	HANDLE m_target_file;
-	HANDLE m_thread_handle;
+	std::unique_ptr<HandleGuard> m_section_handle;
+	std::unique_ptr<HandleGuard> m_target_process;
+	std::unique_ptr<HandleGuard> m_target_file;
+	std::unique_ptr<HandleGuard> m_thread_handle;
 	std::unique_ptr<std::vector<char>> m_source_file_payload;
 
 	std::unique_ptr<NtdllFunctions> m_ntdll_functions;

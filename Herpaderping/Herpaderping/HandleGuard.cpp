@@ -1,6 +1,6 @@
 #include "HandleGuard.h"
 
-HandleGuard::HandleGuard()
+HandleGuard::HandleGuard() : m_handle(nullptr)
 { }
 
 HandleGuard::HandleGuard(HANDLE handle) : m_handle(handle)

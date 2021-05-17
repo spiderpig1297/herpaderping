@@ -6,8 +6,3 @@ std::string error_to_str(DWORD error)
 	stream << error;
 	return stream.str();
 }
-
-std::wstring string_to_wstring(std::string s)
-{
-	return std::wstring(s.begin(), s.end());
-}

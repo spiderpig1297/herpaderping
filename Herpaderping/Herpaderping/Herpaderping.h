@@ -14,9 +14,9 @@ public:
 	 * @param path_to_target: target exectuable; the process which will eventually be executed.
 	 * @param path_to_cover: the executable that the target execuable will impersonate to.
 	 */
-	Herpaderping(std::string path_to_source, 
-				 std::string path_to_target, 
-				 std::string path_to_cover,
+	Herpaderping(std::wstring path_to_source, 
+				 std::wstring path_to_target, 
+				 std::wstring path_to_cover,
 				 const wchar_t* windows_station_to_run_on=DEFAULT_WINDOWS_STATION);
 
 	/**
@@ -60,7 +60,7 @@ protected:
 	 */
 	void create_and_run_target_main_thread();
 
-	const wchar_t* m_windows_station_to_run_on;
+	std::wstring m_windows_station_to_run_on;
 	std::unique_ptr<HandleGuard> m_section_handle;
 	std::unique_ptr<HandleGuard> m_target_process;
 	std::unique_ptr<HandleGuard> m_target_file;
@@ -68,7 +68,7 @@ protected:
 	std::unique_ptr<std::vector<char>> m_source_file_payload;
 
 	std::unique_ptr<NtdllFunctions> m_ntdll_functions;
-	std::string m_path_to_source;
-	std::string m_path_to_target;
-	std::string m_path_to_cover;
+	std::wstring m_path_to_source;
+	std::wstring m_path_to_target;
+	std::wstring m_path_to_cover;
 };
